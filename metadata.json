@@ -1,0 +1,18 @@
+{
+  "name": "Decimal Time",
+  "short_name": "DecimalTime",
+  "description": "Professional time to decimal converter. Works offline on mobile and desktop.",
+  "icons": [
+    {
+      "src": "https://cdn.pixabay.com/photo/2016/03/31/18/27/clock-1294337_1280.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#9333ea",
+  "requestFramePermissions": []
+}
