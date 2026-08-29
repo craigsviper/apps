@@ -1,0 +1,14 @@
+{
+  "name": "rsw-sync-server",
+  "version": "73.118.0",
+  "description": "RSW Field App v59.0 Sync Server - supports Inspections + Sweeping",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "dotenv": "^16.0.0"
+  }
+}

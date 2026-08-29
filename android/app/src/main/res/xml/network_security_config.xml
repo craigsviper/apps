@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The host-server (host-server/) serves its dashboard/sync API over HTTPS with a self-signed
+  certificate (see CLAUDE_CONTEXT.md). A plain WebView rejects that by default. Rather than
+  silently accepting ANY certificate (a MITM risk), this trusts user-installed CAs too - so
+  the fix is: install the host server's cert on the phone once (Settings > Security > Install
+  from storage / "Install a certificate" > CA certificate), the same way you'd trust it in
+  desktop Firefox/Chrome. Cleartext (plain HTTP) is also left enabled in case the sync server
+  is ever run without HTTPS on the local network.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

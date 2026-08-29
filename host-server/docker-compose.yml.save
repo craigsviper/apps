@@ -1,0 +1,64 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  RSW Field App v73.32 — HOST SYNC SERVER                       ║
+# ║  Run this on ONE host machine only.                         ║
+# ║  All field computers sync their data to this server.        ║
+# ║                                                             ║
+# ║  Sync API: https://HOST_IP:8055  (HTTPS — Firefox safe)     ║
+# ║  Health:   http://HOST_IP:8055/health                       ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+services:
+
+  rsw-sync:
+    build:
+      context: ./sync-server
+      dockerfile: Dockerfile
+    container_name: rsw-sync
+    restart: unless-stopped
+    ports:
+      - "${SYNC_PORT:-8055}:8055"
+      - "${SYNC_HTTP_PORT:-8056}:8056"
+    environment:
+      - TZ=${TZ:-Pacific/Auckland}
+      - SYNC_TOKEN=${SYNC_TOKEN:-rsw-sync-token-change-me}
+      - DATA_DIR=/data
+      - BACKUP_INTERVAL_MINUTES=${BACKUP_INTERVAL_MINUTES:-60}
+      - MAX_BACKUPS=${MAX_BACKUPS:-48}
+      - TOMBSTONE_DAYS=${TOMBSTONE_DAYS:-90}
+      # Max body size for incoming sync payloads.
+      # Defaults to 10gb — effectively unlimited for any field dataset.
+      # Lower this (e.g. 500mb) if you want to cap uploads on a shared server.
+      - SYNC_MAX_BODY_SIZE=${SYNC_MAX_BODY_SIZE:-10gb}
+
+    volumes:
+      - rsw-sync-data:/data
+      - rsw-sync-certs:/certs
+      # ^ v73.12: this is also where an optional roads.geojson goes (for
+      #   Areas & Roads → Edit Road's "Select Roads" mode) — copy it in via
+      #   `docker cp roads.geojson rsw-sync:/data/roads.geojson` then
+      #   `docker compose restart`, or mount the host folder directly if you
+      #   prefer editing it from outside the container. See extract-roads.sh
+      #   at the project root and INSTALL-GUIDE.md for how to generate it.
+    healthcheck:
+      test: ["CMD", "curl", "-fsk", "https://localhost:8055/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # No memory/CPU limits — the host machine's full resources are available.
+    # The sync server is I/O-bound (reading/writing one JSON file), not CPU-bound.
+    # Add limits here only if you're sharing this host with other services, e.g.:
+    #   deploy:
+    #     resources:
+    #       limits:
+    #         memory: 2G
+    #         cpus: '2.0'
+    labels:
+      - "com.rsw.description=RSW Field App Sync Server"
+      - "com.rsw.version=73.56"
+
+volumes:
+  rsw-sync-data:
+    driver: local
+  rsw-sync-certs:
+    driver: local

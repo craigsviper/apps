@@ -1,0 +1,56 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  RSW Field App v73.142 — Field Computer (Client)                ║
+# ║                                                             ║
+# ║  App (HTTPS): https://localhost:8050                        ║
+# ║  App (HTTPS): https://YOUR_IP:8050  ← phones/tablets       ║
+# ║                                                             ║
+# ║  Start:  docker compose up -d                               ║
+# ║  Stop:   docker compose down                                ║
+# ║  Logs:   docker compose logs -f                             ║
+# ║  Status: docker compose ps                                  ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+services:
+
+  rsw-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rsw-app
+    restart: unless-stopped
+    ports:
+      - "8050:8050"
+    environment:
+      - TZ=${TZ:-Pacific/Auckland}
+    healthcheck:
+      # v73.142 — Craig-reported: "docker says unhealthy" while the app was
+      # actually serving fine (nginx access log showed continuous normal
+      # 200s the whole time). Root cause: nginx.conf only binds IPv4
+      # (`listen 8050 ssl;` — no IPv6 listener, and the nginx image's own
+      # auto-IPv6 helper skips adding one because this is a custom conf,
+      # confirmed by the "default.conf differs from the packaged version"
+      # entrypoint log line). `curl https://localhost:8050/` inside the
+      # container can resolve `localhost` to ::1 first (Alpine's /etc/hosts
+      # order) and, if that IPv6 attempt doesn't fail instantly, it can burn
+      # the whole 5s timeout before ever trying IPv4 — failing the
+      # healthcheck even though the app itself is completely healthy.
+      # Pointing curl at 127.0.0.1 explicitly removes the ambiguity. This
+      # (not the Dockerfile's own HEALTHCHECK) is the one actually in
+      # effect under `docker compose up` — compose's healthcheck: block
+      # always overrides the image's built-in HEALTHCHECK — so both were
+      # fixed, but this is the one that mattered for the reported symptom.
+      test: ["CMD", "curl", "-fsk", "https://127.0.0.1:8050/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    # No memory/CPU limits — uses the full resources of the machine it runs on.
+    # Add limits here only if sharing this host with other services, e.g.:
+    #   deploy:
+    #     resources:
+    #       limits:
+    #         memory: 1G
+    #         cpus: '1.0'
+    labels:
+      - "com.rsw.description=RSW Field App v73.142"
+      - "com.rsw.version=73.142"

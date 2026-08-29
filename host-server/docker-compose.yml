@@ -1,0 +1,133 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  RSW Field App v73.118 — HOST SYNC SERVER                       ║
+# ║  Run this on ONE host machine only.                         ║
+# ║  All field computers sync their data to this server.        ║
+# ║                                                             ║
+# ║  Sync API: https://HOST_IP:8055  (HTTPS — Firefox safe)     ║
+# ║  Health:   http://HOST_IP:8055/health                       ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+services:
+
+  rsw-sync:
+    build:
+      context: ./sync-server
+      dockerfile: Dockerfile
+    container_name: rsw-sync
+    restart: unless-stopped
+    ports:
+      - "${SYNC_PORT:-8055}:8055"
+      - "${SYNC_HTTP_PORT:-8056}:8056"
+    environment:
+      - TZ=${TZ:-Pacific/Auckland}
+      - SYNC_TOKEN=${SYNC_TOKEN:-rsw-sync-token-change-me}
+      - DATA_DIR=/data
+      # v73.90: the host's real LAN IP, e.g. 192.168.1.7 — REQUIRED for the
+      # HTTPS cert to actually cover the address browsers connect to. Set
+      # this in .env (see .env.example). Without it, the cert's SAN list
+      # falls back to whatever the container sees, which on Docker's default
+      # bridge network is only its own internal IP — never the LAN IP — and
+      # background fetch()/XHR calls (e.g. the dashboard's Debug Log) get
+      # silently rejected by the browser even though the page itself loads.
+      - HOST_IP=${HOST_IP:-}
+      # v73.63: Node's fetch() tries IPv6 first, most Docker containers have
+      # no outbound IPv6 route -> instant generic "fetch failed". Forces
+      # IPv4 first, same fix as the Dockerfile ENV (this one works with just
+      # a restart, no rebuild needed).
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - BACKUP_INTERVAL_MINUTES=${BACKUP_INTERVAL_MINUTES:-60}
+      - MAX_BACKUPS=${MAX_BACKUPS:-48}
+      - TOMBSTONE_DAYS=${TOMBSTONE_DAYS:-90}
+      # Max body size for incoming sync payloads.
+      # Defaults to 10gb — effectively unlimited for any field dataset.
+      # Lower this (e.g. 500mb) if you want to cap uploads on a shared server.
+      - SYNC_MAX_BODY_SIZE=${SYNC_MAX_BODY_SIZE:-10gb}
+      # v73.56: Road Data auto-update (dashboard "Update Road Data (OSM)"
+      # button) — bbox is REQUIRED for the button to work (blank/unset means
+      # bboxConfigured:false and the button stays disabled); OVERPASS_URL
+      # only needs setting if you're pointing at a self-hosted/alternate
+      # Overpass instance instead of the public default. (v73.63: these two
+      # lines were themselves the fix — v73.56 added them to .env.example
+      # but forgot to actually wire them into this environment: block, so
+      # they silently never reached the container despite being in .env.)
+      - ROADS_BBOX=${ROADS_BBOX:-}
+      - OVERPASS_URL=${OVERPASS_URL:-https://overpass-api.de/api/interpreter}
+      # v73.69: internal Docker network address of the osrm service below —
+      # only change this if you're pointing at an OSRM instance running
+      # somewhere other than this same compose stack.
+      - OSRM_URL=${OSRM_URL:-http://osrm:5000}
+    volumes:
+      - rsw-sync-data:/data
+      - rsw-sync-certs:/certs
+      # ^ v73.12: this is also where an optional roads.geojson goes (for
+      #   Areas & Roads → Edit Road's "Select Roads" mode) — copy it in via
+      #   `docker cp roads.geojson rsw-sync:/data/roads.geojson` then
+      #   `docker compose restart`, or mount the host folder directly if you
+      #   prefer editing it from outside the container. See extract-roads.sh
+      #   at the project root and INSTALL-GUIDE.md for how to generate it.
+    healthcheck:
+      # v73.123 — same fix as the app container's docker-compose.yml (not
+      # reported broken here, but identical bug class): 'localhost' can
+      # resolve to ::1 first inside the container with no IPv6 listener
+      # behind it. Preemptive fix, not from a Craig-reported failure on
+      # this specific container.
+      test: ["CMD", "curl", "-fsk", "https://127.0.0.1:8055/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # No memory/CPU limits — the host machine's full resources are available.
+    # The sync server is I/O-bound (reading/writing one JSON file), not CPU-bound.
+    # Add limits here only if you're sharing this host with other services, e.g.:
+    #   deploy:
+    #     resources:
+    #       limits:
+    #         memory: 2G
+    #         cpus: '2.0'
+    labels:
+      - "com.rsw.description=RSW Field App Sync Server"
+      - "com.rsw.version=73.118"
+
+  # v73.69 — OSRM road-matching service. Serves /match (snap a whole
+  # hand-drawn trace to real OSM roads, replacing the old Simplify Points /
+  # Find Long Jumps / Find Duplicate Lines heuristics) and /route
+  # (point-to-point, replacing the old local Dijkstra /api/roads/connect).
+  # Graph data comes from ./osrm-data, built once by running setup-osrm.sh
+  # BEFORE first bringing this service up — osrm-routed will fail to start
+  # if osrm-data/new-zealand-latest.osrm doesn't exist yet. rsw-sync talks to
+  # this over the internal Docker network (http://osrm:5000), so no host
+  # port is required for it — 5000 is still published for manual testing
+  # (curl/browser) per setup-osrm.sh's instructions.
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend
+    container_name: rsw-osrm
+    restart: unless-stopped
+    command: osrm-routed --algorithm mld /data/new-zealand-latest.osrm
+    ports:
+      - "${OSRM_PORT:-5000}:5000"
+    volumes:
+      - ./osrm-data:/data:ro
+    healthcheck:
+      # v73.69.1 — Craig: rsw-osrm showed "unhealthy" despite serving
+      # requests fine. Root cause: the osrm-backend runtime image doesn't
+      # ship wget (it's a stripped-down image, build-time deps aren't
+      # carried into the final layer) — the healthcheck itself was failing
+      # to even run, nothing to do with OSRM. Switched to a plain TCP check
+      # via bash's /dev/tcp instead of an HTTP client, since bash IS present
+      # in this image even though wget/curl aren't. Weaker than an actual
+      # route check (only proves the port's open, not that /match works),
+      # but reliable — worth it over a healthcheck that can never pass.
+      test: ["CMD-SHELL", "timeout 5 bash -c '</dev/tcp/localhost/5000' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    labels:
+      - "com.rsw.description=RSW Field App OSRM Road Matching"
+      - "com.rsw.version=73.118"
+
+volumes:
+  rsw-sync-data:
+    driver: local
+  rsw-sync-certs:
+    driver: local
