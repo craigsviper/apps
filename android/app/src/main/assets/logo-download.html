@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download Logo - Road & Storm Water Inspection</title>
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  background: #1e293b;
+  color: white;
+}
+canvas {
+  border: 2px solid #475569;
+  border-radius: 16px;
+  margin: 20px;
+  background: white;
+}
+.btn {
+  padding: 14px 32px;
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: white;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  transition: transform 0.15s;
+  margin: 8px;
+}
+.btn:hover { transform: scale(1.05); }
+.btn-green { background: linear-gradient(135deg, #22c55e, #16a34a); }
+h1 { margin-bottom: 0; }
+p { color: #94a3b8; margin-top: 8px; }
+.buttons { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+</style>
+</head>
+<body>
+<h1>Logo Preview</h1>
+<p>400 × 400 PNG — Road & Storm Water Inspection Programme</p>
+<canvas id="logoCanvas" width="400" height="400"></canvas>
+<div class="buttons">
+  <button class="btn" onclick="downloadPNG()">⬇️ Download PNG</button>
+  <button class="btn btn-green" onclick="downloadSVG()">⬇️ Download SVG</button>
+</div>
+
+<script>
+const canvas = document.getElementById('logoCanvas');
+const ctx = canvas.getContext('2d');
+const W = 400, H = 400;
+
+function drawLogo() {
+  // Background - rounded square with gradient
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, '#0f172a');
+  grad.addColorStop(0.5, '#1e3a5f');
+  grad.addColorStop(1, '#0f172a');
+  roundRect(ctx, 0, 0, W, H, 32, grad);
+
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(W/2, H/2, 170, 0, Math.PI * 2);
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Inner decorative ring
+  ctx.beginPath();
+  ctx.arc(W/2, H/2, 158, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Road drawing
+  drawRoad(ctx);
+
+  // Storm water drain grate
+  drawDrainGrate(ctx);
+
+  // Water drops
+  drawWaterDrops(ctx);
+
+  // Map pin icon
+  drawMapPin(ctx);
+
+  // Text - "RSW" main
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Top arc text
+  ctx.save();
+  ctx.fillStyle = '#60a5fa';
+  ctx.font = 'bold 13px Arial, sans-serif';
+  drawArcText(ctx, 'ROAD & STORM WATER', W/2, H/2, 140, -Math.PI * 0.75, -Math.PI * 0.25);
+  ctx.restore();
+
+  // Bottom arc text (drawn right-to-left so it reads correctly along the bottom)
+  ctx.save();
+  ctx.fillStyle = '#60a5fa';
+  ctx.font = 'bold 13px Arial, sans-serif';
+  drawArcTextBottom(ctx, 'INSPECTION PROGRAMME', W/2, H/2, 140, Math.PI * 0.78, Math.PI * 0.22);
+  ctx.restore();
+
+  // Small dots on the ring as separators
+  const dotAngle1 = -Math.PI * 0.2;
+  const dotAngle2 = Math.PI * 0.2;
+  for (const angle of [dotAngle1, dotAngle2, -Math.PI + dotAngle1, -Math.PI + dotAngle2]) {
+    ctx.beginPath();
+    ctx.arc(W/2 + Math.cos(angle) * 140, H/2 + Math.sin(angle) * 140, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fill();
+  }
+}
+
+function drawRoad(ctx) {
+  // Road surface
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(155, 280);
+  ctx.lineTo(185, 160);
+  ctx.lineTo(215, 160);
+  ctx.lineTo(245, 280);
+  ctx.closePath();
+  ctx.fillStyle = '#475569';
+  ctx.fill();
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Road center dashes
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(200, 165);
+  ctx.lineTo(200, 275);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Road edge lines
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(160, 275);
+  ctx.lineTo(188, 163);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(240, 275);
+  ctx.lineTo(212, 163);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawDrainGrate(ctx) {
+  const cx = 290, cy = 210, w = 50, h = 40;
+
+  // Grate frame
+  ctx.fillStyle = '#334155';
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 2;
+  roundRect(ctx, cx - w/2, cy - h/2, w, h, 4, '#334155');
+  ctx.strokeRect(cx - w/2, cy - h/2, w, h);
+
+  // Grate lines
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 2;
+  for (let i = 1; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2 + 4, cy - h/2 + i * (h/5));
+    ctx.lineTo(cx + w/2 - 4, cy - h/2 + i * (h/5));
+    ctx.stroke();
+  }
+
+  // Label
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '9px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('DRAIN', cx, cy + h/2 + 12);
+}
+
+function drawWaterDrops(ctx) {
+  const drops = [
+    {x: 270, y: 170, s: 8},
+    {x: 310, y: 175, s: 6},
+    {x: 285, y: 255, s: 7},
+    {x: 130, y: 200, s: 6},
+    {x: 145, y: 230, s: 5},
+  ];
+
+  for (const d of drops) {
+    ctx.save();
+    const dropGrad = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.s);
+    dropGrad.addColorStop(0, 'rgba(96, 165, 250, 0.9)');
+    dropGrad.addColorStop(1, 'rgba(37, 99, 235, 0.6)');
+
+    ctx.beginPath();
+    ctx.moveTo(d.x, d.y - d.s);
+    ctx.bezierCurveTo(d.x + d.s * 0.6, d.y - d.s * 0.3, d.x + d.s, d.y + d.s * 0.3, d.x, d.y + d.s);
+    ctx.bezierCurveTo(d.x - d.s, d.y + d.s * 0.3, d.x - d.s * 0.6, d.y - d.s * 0.3, d.x, d.y - d.s);
+    ctx.fillStyle = dropGrad;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawMapPin(ctx) {
+  const px = 130, py = 170;
+
+  // Pin shadow
+  ctx.beginPath();
+  ctx.ellipse(px, py + 28, 8, 3, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fill();
+
+  // Pin body
+  ctx.beginPath();
+  ctx.moveTo(px, py + 25);
+  ctx.bezierCurveTo(px - 15, py + 5, px - 15, py - 15, px, py - 18);
+  ctx.bezierCurveTo(px + 15, py - 15, px + 15, py + 5, px, py + 25);
+  ctx.fillStyle = '#ef4444';
+  ctx.fill();
+  ctx.strokeStyle = '#b91c1c';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Pin inner circle
+  ctx.beginPath();
+  ctx.arc(px, py, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#fca5a5';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(px, py, 3, 0, Math.PI * 2);
+  ctx.fillStyle = 'white';
+  ctx.fill();
+}
+
+function drawArcText(ctx, text, cx, cy, radius, startAngle, endAngle) {
+  const chars = text.split('');
+  const totalAngle = endAngle - startAngle;
+  const anglePerChar = totalAngle / (chars.length - 1);
+
+  for (let i = 0; i < chars.length; i++) {
+    const angle = startAngle + i * anglePerChar;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle + Math.PI / 2);
+    ctx.fillText(chars[i], 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawArcTextBottom(ctx, text, cx, cy, radius, startAngle, endAngle) {
+  // Bottom arc: characters are flipped (rotate angle - PI/2) and laid out
+  // from startAngle to endAngle (going right-to-left so text reads left-to-right)
+  const chars = text.split('');
+  const totalAngle = endAngle - startAngle;
+  const anglePerChar = totalAngle / (chars.length - 1);
+
+  for (let i = 0; i < chars.length; i++) {
+    const angle = startAngle + i * anglePerChar;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle - Math.PI / 2);
+    ctx.fillText(chars[i], 0, 0);
+    ctx.restore();
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r, fill) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  if (fill) {
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+}
+
+// Draw immediately
+drawLogo();
+
+function downloadPNG() {
+  const link = document.createElement('a');
+  link.download = 'rsw-inspection-logo-400x400.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function downloadSVG() {
+  // Create SVG version
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('width', '400');
+  svg.setAttribute('height', '400');
+  svg.setAttribute('viewBox', '0 0 400 400');
+  svg.setAttribute('xmlns', svgNS);
+
+  // Embed the canvas as image in SVG
+  const img = document.createElementNS(svgNS, 'image');
+  img.setAttribute('width', '400');
+  img.setAttribute('height', '400');
+  img.setAttribute('href', canvas.toDataURL('image/png'));
+  svg.appendChild(img);
+
+  const serializer = new XMLSerializer();
+  const svgStr = serializer.serializeToString(svg);
+  const blob = new Blob([svgStr], {type: 'image/svg+xml'});
+  const link = document.createElement('a');
+  link.download = 'rsw-inspection-logo-400x400.svg';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+}
+</script>
+</body>
+</html>

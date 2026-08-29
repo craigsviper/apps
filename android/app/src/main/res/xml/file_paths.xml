@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Matches the directory used in MainActivity.kt's camera-capture temp file (getExternalFilesDir(Environment.DIRECTORY_PICTURES)). -->
+    <external-files-path name="camera_photos" path="Pictures" />
+</paths>

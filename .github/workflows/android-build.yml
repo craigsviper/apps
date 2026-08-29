@@ -1,0 +1,70 @@
+name: Build Android APK
+
+# Runs on: a push of a version tag (e.g. v73.125), or manually from the Actions tab
+# ("Run workflow" button — use this while testing, before you're ready to tag a release).
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # v73.129 — Craig-reported: the Release page only showed GitHub's auto-generated
+    # source-code zip/tar.gz, no app-debug.apk attached, even though the build itself
+    # succeeded. Root cause: many GitHub accounts/orgs now default new repos to
+    # READ-ONLY workflow permissions, so the GITHUB_TOKEN this job was using had no
+    # permission to create/attach assets to a Release — softprops/action-gh-release
+    # needs write access. Explicitly declaring it here fixes this regardless of the
+    # repo's own Settings > Actions > General > "Workflow permissions" setting.
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Provisions Gradle itself as a fallback/cache accelerant — the repo now also commits its
+      # own gradlew/gradle-wrapper.jar (see android/README.md), so `./gradlew` below is what
+      # actually runs the build; this action just warms Gradle's dependency cache.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure gradlew is executable
+        working-directory: android
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsw-field-app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Only runs when triggered by a version tag push (not on manual "Run workflow" clicks),
+      # so testing the workflow doesn't spam Releases.
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          name: "RSW Field App ${{ github.ref_name }}"
+          body: |
+            Android build of the RSW Field App (WebView shell around the web app), signed with
+            Gradle's auto-generated debug key — fine for direct install on your own device,
+            not intended for Play Store distribution.
+
+            **Install:** download `app-debug.apk` below on your Android phone, open it, and
+            allow "install from this source" if prompted (Settings > Apps > [browser] >
+            Install unknown apps). See `android/README.md` for full first-time setup
+            (trusting the sync server's certificate, permissions, etc.).
+          generate_release_notes: true

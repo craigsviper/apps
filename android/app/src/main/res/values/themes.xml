@@ -1,0 +1,8 @@
+<resources>
+    <!-- No action bar - the web app has its own header/nav, a native app bar would just
+         duplicate it and eat screen space on a phone. -->
+    <style name="Theme.RswFieldApp" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:statusBarColor">#4F46E5</item>
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+</resources>
